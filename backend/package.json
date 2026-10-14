@@ -1,0 +1,28 @@
+{
+  "name": "find-me-backend",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "node prisma/seed.js",
+    "db:generate": "prisma generate",
+    "db:encrypt-existing-students": "node scripts/encrypt-existing-student-numbers.js",
+    "db:encrypt-existing-students:apply": "node scripts/encrypt-existing-student-numbers.js --apply"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.9.0",
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "cookie-parser": "^1.4.7",
+    "helmet": "^8.1.0",
+    "express-rate-limit": "^7.5.0",
+    "argon2": "^0.43.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.9.0"
+  }
+}

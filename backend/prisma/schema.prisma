@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  PROFESSOR
+  STUDENT
+}
+
+enum SessionStatus {
+  ACTIVE
+  COMPLETED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  EXCUSED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  PENDING
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model Institution {
+  id String @id @default(cuid())
+  name String
+  slug String @unique
+  users User[]
+  classes Class[]
+  subscription Subscription?
+  payments Payment[]
+  devices Device[]
+  logs AuditLog[]
+  createdAt DateTime @default(now())
+}
+model User {
+  id String @id @default(cuid())
+  institutionId String
+  institution Institution @relation(fields: [institutionId], references: [id])
+  email String @unique
+  name String
+  passwordHash String
+  role Role
+  studentNumber String?
+  encryptedContact String?
+  createdAt DateTime @default(now())
+  classes Class[] @relation("Teacher")
+  enrollments Enrollment[]
+  attendance AttendanceRecord[]
+  credentials RFIDCredential[]
+  logs AuditLog[]
+  sessions AuthSession[]
+  @@unique([institutionId, studentNumber])
+}
+model AuthSession {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  tokenHash String @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+model Class {
+  id String @id @default(cuid())
+  institutionId String
+  institution Institution @relation(fields:[institutionId],references:[id])
+  name String
+  code String
+  classroom String
+  professorId String
+  professor User @relation("Teacher",fields:[professorId],references:[id])
+  enrollments Enrollment[]
+  sessions ClassSession[]
+  createdAt DateTime @default(now())
+  @@unique([institutionId,code])
+}
+model Enrollment {
+  id String @id @default(cuid())
+  classId String
+  studentId String
+  class Class @relation(fields:[classId],references:[id],onDelete:Cascade)
+  student User @relation(fields:[studentId],references:[id])
+  @@unique([classId,studentId])
+}
+model ClassSession {
+  id String @id @default(cuid())
+  classId String
+  class Class @relation(fields:[classId],references:[id])
+  status SessionStatus @default(ACTIVE)
+  startsAt DateTime @default(now())
+  endsAt DateTime?
+  attendance AttendanceRecord[]
+  scans ScanEvent[]
+}
+model AttendanceRecord {
+  id String @id @default(cuid())
+  sessionId String
+  studentId String
+  session ClassSession @relation(fields:[sessionId],references:[id])
+  student User @relation(fields:[studentId],references:[id])
+  status AttendanceStatus
+  checkedInAt DateTime?
+  updatedAt DateTime @updatedAt
+  @@unique([sessionId,studentId])
+}
+model RFIDCredential {
+  id String @id @default(cuid())
+  studentId String
+  student User @relation(fields:[studentId],references:[id])
+  tokenDigest String @unique
+  createdAt DateTime @default(now())
+}
+model ScanEvent {
+  id String @id @default(cuid())
+  eventId String @unique
+  sessionId String
+  session ClassSession @relation(fields:[sessionId],references:[id])
+  result String
+  createdAt DateTime @default(now())
+}
+model Device {
+  id String @id @default(cuid())
+  institutionId String
+  institution Institution @relation(fields:[institutionId],references:[id])
+  name String
+  enabled Boolean @default(false)
+}
+model SubscriptionPlan {
+  id String @id @default(cuid())
+  name String @unique
+  priceCentavos Int
+  durationDays Int
+  maxClasses Int
+  reportsEnabled Boolean @default(false)
+  subscriptions Subscription[]
+}
+model Subscription {
+  id String @id @default(cuid())
+  institutionId String @unique
+  institution Institution @relation(fields:[institutionId],references:[id])
+  planId String
+  plan SubscriptionPlan @relation(fields:[planId],references:[id])
+  status SubscriptionStatus @default(ACTIVE)
+  expiresAt DateTime?
+  payments Payment[]
+}
+model Payment {
+  id String @id @default(cuid())
+  institutionId String
+  institution Institution @relation(fields:[institutionId],references:[id])
+  subscriptionId String
+  subscription Subscription @relation(fields:[subscriptionId],references:[id])
+  checkoutId String? @unique
+  planId String?
+  paymentMethod String?
+  providerPaymentId String? @unique
+  amountCentavos Int
+  status PaymentStatus @default(PENDING)
+  paidAt DateTime?
+  createdAt DateTime @default(now())
+}
+model WebhookEvent {
+  id String @id @default(cuid())
+  providerEventId String @unique
+  receivedAt DateTime @default(now())
+}
+model AuditLog {
+  id String @id @default(cuid())
+  institutionId String
+  institution Institution @relation(fields:[institutionId],references:[id])
+  actorId String
+  actor User @relation(fields:[actorId],references:[id])
+  action String
+  details Json?
+  createdAt DateTime @default(now())
+}
